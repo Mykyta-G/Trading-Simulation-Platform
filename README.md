@@ -1,1 +1,1 @@
-# Trading-Simulation-Platform-
+# Trading-Simulation-Platform
