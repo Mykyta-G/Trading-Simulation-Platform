@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.awt.event.MouseAdapter;
+import java.io.File;
 
 public class StockChartPanel extends JPanel {
     private XYChart chart;
@@ -254,7 +255,8 @@ public class StockChartPanel extends JPanel {
         } else if (stockName.equals("JULA")) {
             randomChange -= 0.05; // Slight downward trend
         } else if (stockName.equals("MAX")) {
-            randomChange += Math.sin(times.size() * 0.1) * 2; // Cyclical trend
+            // Reduced growth to be more similar to other stocks
+            randomChange += 0.08 + Math.sin(times.size() * 0.07) * 0.5; // Mild trend with small oscillation
         }
 
         double newPrice = Math.max(1, lastPrice + randomChange); // Ensure price stays positive
@@ -276,6 +278,24 @@ public class StockChartPanel extends JPanel {
                 prices.stream().mapToDouble(Double::doubleValue).toArray(),
                 null
         );
+        
+        // Ensure y-axis scale is updated to reflect actual stock values
+        double minPrice = Double.MAX_VALUE;
+        double maxPrice = Double.MIN_VALUE;
+        
+        for (CopyOnWriteArrayList<Double> priceList : stockPrices.values()) {
+            if (!priceList.isEmpty()) {
+                for (Double price : priceList) {
+                    minPrice = Math.min(minPrice, price);
+                    maxPrice = Math.max(maxPrice, price);
+                }
+            }
+        }
+        
+        // Add padding to min/max for better visualization
+        double padding = (maxPrice - minPrice) * 0.1;
+        chart.getStyler().setYAxisMin(Math.max(0, minPrice - padding));
+        chart.getStyler().setYAxisMax(maxPrice + padding);
     }
 
     public void updateStock(String stockName) {

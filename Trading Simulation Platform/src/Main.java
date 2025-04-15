@@ -625,6 +625,18 @@ public class Main {
 
         frame.add(mainPanel);
         frame.setVisible(true);
+
+        // Set custom application icon
+        try {
+            ImageIcon icon = new ImageIcon(Main.class.getClassLoader().getResource("icon.png"));
+            if (icon.getImage() != null) {
+                frame.setIconImage(icon.getImage());
+            } else {
+                System.out.println("Could not load icon");
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to load icon: " + e.getMessage());
+        }
     }
 
     private static void updateStockLabel(String stockName, double currentPrice, Map<String, JLabel> labels) {
