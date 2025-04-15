@@ -228,6 +228,30 @@ public class Main {
         currentPrices.put("IKEA", 300.0);
         currentPrices.put("JULA", 150.0);
         currentPrices.put("MAX", 200.0);
+        
+        // Store the trend direction and strength for each stock
+        Map<String, Double> stockTrends = new HashMap<>();
+        stockTrends.put("IKEA", 0.2);  // Slightly positive trend
+        stockTrends.put("JULA", 0.0);  // Neutral trend
+        stockTrends.put("MAX", 0.1);   // Slight positive trend
+        
+        // Track volatility for each stock
+        Map<String, Double> stockVolatility = new HashMap<>();
+        stockVolatility.put("IKEA", 2.0);  // Medium volatility
+        stockVolatility.put("JULA", 1.5);  // Lower volatility
+        stockVolatility.put("MAX", 3.0);   // Higher volatility
+        
+        // Track time since last major price jump
+        Map<String, Integer> timeSinceJump = new HashMap<>();
+        timeSinceJump.put("IKEA", 0);
+        timeSinceJump.put("JULA", 0);
+        timeSinceJump.put("MAX", 0);
+        
+        // Constants for price simulation
+        final double TREND_CHANGE_PROBABILITY = 0.05;  // 5% chance of trend change each tick
+        final double JUMP_PROBABILITY = 0.01;         // 1% chance of price jump
+        final double MAX_TREND = 0.5;                 // Maximum trend strength
+        final int JUMP_COOLDOWN = 20;                // Minimum ticks between jumps
 
         // Add this after your investables map (around line 77):
         Map<String, Integer> stocksOwned = new HashMap<>();  // Track how many of each stock the user owns
@@ -500,13 +524,73 @@ public class Main {
 
         // Create a timer to update the stock prices
         Timer priceUpdateTimer = new Timer(1000, e -> {
-            // Update prices randomly every second
+            // Update prices using a more realistic algorithm
             for (String stockName : investables.keySet()) {
                 double price = currentPrices.get(stockName);
-                double change = (Math.random() - 0.5) * 3; // Small random change
-                price += change;
+                double trend = stockTrends.get(stockName);
+                double volatility = stockVolatility.get(stockName);
+                int ticksSinceJump = timeSinceJump.get(stockName);
+                
+                // Occasionally change the trend direction
+                if (Math.random() < TREND_CHANGE_PROBABILITY) {
+                    // Adjust the trend slightly, keeping it within bounds
+                    trend += (Math.random() - 0.5) * 0.2;
+                    // Ensure trend stays within reasonable bounds
+                    trend = Math.max(-MAX_TREND, Math.min(MAX_TREND, trend));
+                    stockTrends.put(stockName, trend);
+                }
+                
+                // Calculate base price change (trend + random volatility)
+                double baseChange = trend + (Math.random() - 0.5) * volatility;
+                
+                // Occasionally add a price jump (news event, earnings report, etc.)
+                boolean jumpOccurred = false;
+                if (ticksSinceJump > JUMP_COOLDOWN && Math.random() < JUMP_PROBABILITY) {
+                    // Higher probability of positive jumps for stocks with positive trends
+                    boolean positiveJump = Math.random() < (0.5 + trend);
+                    
+                    // Add a significant jump (5-15% of current price)
+                    double jumpMultiplier = (Math.random() * 0.1 + 0.05) * (positiveJump ? 1 : -1);
+                    baseChange += price * jumpMultiplier;
+                    
+                    // Log the jump event
+                    String jumpDirection = positiveJump ? "surged" : "dropped";
+                    String message = stockName + " " + jumpDirection + " on market news!";
+                    logger.log(message);
+                    
+                    // Reset jump cooldown
+                    timeSinceJump.put(stockName, 0);
+                    jumpOccurred = true;
+                } else {
+                    // Increment time since last jump
+                    timeSinceJump.put(stockName, ticksSinceJump + 1);
+                }
+                
+                // Apply the change to the price
+                price += baseChange;
+                
+                // Prevent stocks from going to zero or negative
+                price = Math.max(price, volatility * 10);
+                
+                // Prevent excessive growth
+                if (price > 10000) {
+                    price = 9000 + Math.random() * 1000;
+                    logger.log(stockName + " split after reaching record high!");
+                }
+                
+                // Update price
                 currentPrices.put(stockName, price);
+                
+                // Update stock label
                 updateStockLabel(stockName, price, stockLabels);
+                
+                // Add small bump to chart for visual effect
+                chartPanel.updateStock(stockName);
+                
+                // For debugging
+                if (jumpOccurred) {
+                    System.out.println(stockName + " trend: " + trend + ", volatility: " + volatility);
+                }
             }
         });
         priceUpdateTimer.start();
