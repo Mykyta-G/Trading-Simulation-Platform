@@ -21,6 +21,8 @@ import javax.swing.text.Element;
 
 public class Main {
     public static void main(String[] args) {
+        // Fix for high DPI displays
+        System.setProperty("sun.java2d.uiScale", "1.0");
 
         // Use array to make balance mutable inside inner classes
         double[] balance = {1000.0};
