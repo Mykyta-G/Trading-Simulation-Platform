@@ -18,6 +18,7 @@ import javax.swing.text.Document;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Position;
 import javax.swing.text.Element;
+import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) {
@@ -225,20 +226,20 @@ public class Main {
 
         // Create a single chart showing all three stocks
         StockChartPanel chartPanel = new StockChartPanel();
-        chartPanel.addStock("IKEA", 300);
-        chartPanel.addStock("JULA", 150);
+        chartPanel.addStock("IKEA", 250);
+        chartPanel.addStock("JULA", 225);
         chartPanel.addStock("MAX", 200);
 
         // Stocks and their prices
         Map<String, Integer> investables = new HashMap<>();
-        investables.put("IKEA", 300);
-        investables.put("JULA", 150);
+        investables.put("IKEA", 250);
+        investables.put("JULA", 225);
         investables.put("MAX", 200);
-
-        // Add this after your investables map (around line 77):
+        
+        // Create a map to track current prices
         Map<String, Double> currentPrices = new HashMap<>();
-        currentPrices.put("IKEA", 300.0);
-        currentPrices.put("JULA", 150.0);
+        currentPrices.put("IKEA", 250.0);
+        currentPrices.put("JULA", 225.0);
         currentPrices.put("MAX", 200.0);
         
         // Store the trend direction and strength for each stock
@@ -361,8 +362,8 @@ public class Main {
             buyButton.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    // Get current price
-                    double currentPrice = currentPrices.get(stockName);
+                    // Get current price directly from the chart panel
+                    double currentPrice = chartPanel.getCurrentPrice(stockName);
                     
                     if (balance[0] >= currentPrice) {
                         // Deduct current price and update balance label
@@ -382,16 +383,12 @@ public class Main {
                         System.out.println(message);
                         logger.log(message);
                         
-                        // Simulate a price change when stock is bought
-                        double randomChange = (Math.random() - 0.5) * 10; // Random price movement
-                        currentPrice += randomChange;
-                        currentPrices.put(stockName, currentPrice);
-                        
-                        // Update the stock in our chart
+                        // Update the chart without changing the price locally
+                        // The price is fully managed by the chart panel now
                         chartPanel.updateStock(stockName);
                         
-                        // Update the label with new price
-                        updateStockLabel(stockName, currentPrice, stockLabels);
+                        // Update the label with new price from chart
+                        updateStockLabel(stockName, chartPanel.getCurrentPrice(stockName), stockLabels);
                     } else {
                         // Show popup if not enough money
                         String message = "Not enough balance to buy " + stockName + "!";
@@ -449,8 +446,8 @@ public class Main {
                     int owned = stocksOwned.get(stockName);
                     
                     if (owned > 0) {
-                        // Get current price
-                        double currentPrice = currentPrices.get(stockName);
+                        // Get current price directly from the chart panel
+                        double currentPrice = chartPanel.getCurrentPrice(stockName);
                         
                         // Add price to balance
                         balance[0] += currentPrice;
@@ -471,16 +468,12 @@ public class Main {
                         System.out.println(message);
                         logger.log(message);
                         
-                        // Simulate a price change when stock is sold
-                        double randomChange = (Math.random() - 0.5) * 10; // Random price movement
-                        currentPrice += randomChange;
-                        currentPrices.put(stockName, currentPrice);
-                        
-                        // Update the stock in our chart
+                        // Update the chart without changing the price locally
+                        // The price is fully managed by the chart panel now
                         chartPanel.updateStock(stockName);
                         
-                        // Update the label with new price
-                        updateStockLabel(stockName, currentPrice, stockLabels);
+                        // Update the label with new price from chart
+                        updateStockLabel(stockName, chartPanel.getCurrentPrice(stockName), stockLabels);
                     }
                 }
             });
@@ -538,70 +531,30 @@ public class Main {
         Timer priceUpdateTimer = new Timer(1000, e -> {
             // Update prices using a more realistic algorithm
             for (String stockName : investables.keySet()) {
-                double price = currentPrices.get(stockName);
+                // Get the current price directly from the chart for accuracy
+                double price = chartPanel.getCurrentPrice(stockName);
+                
+                // Update our tracking maps with the actual chart price
+                currentPrices.put(stockName, price);
+                
+                // Update stock label with the chart's actual price
+                updateStockLabel(stockName, price, stockLabels);
+                
+                // The following code is now redundant since we're getting prices from the chart
+                // But we'll leave these variables intact for possible future changes
                 double trend = stockTrends.get(stockName);
                 double volatility = stockVolatility.get(stockName);
                 int ticksSinceJump = timeSinceJump.get(stockName);
                 
-                // Occasionally change the trend direction
-                if (Math.random() < TREND_CHANGE_PROBABILITY) {
-                    // Adjust the trend slightly, keeping it within bounds
-                    trend += (Math.random() - 0.5) * 0.2;
-                    // Ensure trend stays within reasonable bounds
-                    trend = Math.max(-MAX_TREND, Math.min(MAX_TREND, trend));
-                    stockTrends.put(stockName, trend);
-                }
-                
-                // Calculate base price change (trend + random volatility)
-                double baseChange = trend + (Math.random() - 0.5) * volatility;
-                
-                // Occasionally add a price jump (news event, earnings report, etc.)
-                boolean jumpOccurred = false;
-                if (ticksSinceJump > JUMP_COOLDOWN && Math.random() < JUMP_PROBABILITY) {
-                    // Higher probability of positive jumps for stocks with positive trends
+                // Update jump tracking variables
+                if (Math.random() < JUMP_PROBABILITY && ticksSinceJump > JUMP_COOLDOWN) {
                     boolean positiveJump = Math.random() < (0.5 + trend);
-                    
-                    // Add a significant jump (5-15% of current price)
-                    double jumpMultiplier = (Math.random() * 0.1 + 0.05) * (positiveJump ? 1 : -1);
-                    baseChange += price * jumpMultiplier;
-                    
-                    // Log the jump event
                     String jumpDirection = positiveJump ? "surged" : "dropped";
                     String message = stockName + " " + jumpDirection + " on market news!";
                     logger.log(message);
-                    
-                    // Reset jump cooldown
                     timeSinceJump.put(stockName, 0);
-                    jumpOccurred = true;
                 } else {
-                    // Increment time since last jump
                     timeSinceJump.put(stockName, ticksSinceJump + 1);
-                }
-                
-                // Apply the change to the price
-                price += baseChange;
-                
-                // Prevent stocks from going to zero or negative
-                price = Math.max(price, volatility * 10);
-                
-                // Prevent excessive growth
-                if (price > 10000) {
-                    price = 9000 + Math.random() * 1000;
-                    logger.log(stockName + " split after reaching record high!");
-                }
-                
-                // Update price
-                currentPrices.put(stockName, price);
-                
-                // Update stock label
-                updateStockLabel(stockName, price, stockLabels);
-                
-                // Add small bump to chart for visual effect
-                chartPanel.updateStock(stockName);
-                
-                // For debugging
-                if (jumpOccurred) {
-                    System.out.println(stockName + " trend: " + trend + ", volatility: " + volatility);
                 }
             }
         });

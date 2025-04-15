@@ -102,13 +102,13 @@ public class StockChartPanel extends JPanel {
         this(); // Call the default constructor
 
         // Initialize with a starting price based on stock name
-        int initialPrice = 100;
+        int initialPrice = 200; // Default starting price
         if (stockName.equals("IKEA")) {
-            initialPrice = 300;
+            initialPrice = 250; // Highest value
         } else if (stockName.equals("JULA")) {
-            initialPrice = 150;
+            initialPrice = 225; // Middle value (25 less than IKEA)
         } else if (stockName.equals("MAX")) {
-            initialPrice = 200;
+            initialPrice = 240; // Higher starting price to prevent early drops
         }
 
         // Add the stock to the chart
@@ -251,13 +251,26 @@ public class StockChartPanel extends JPanel {
 
         // Add a trend factor based on stock name for more realistic movement
         if (stockName.equals("IKEA")) {
-            randomChange += 0.1; // Slight upward trend
+            randomChange += 0.15; // Slight upward trend
         } else if (stockName.equals("JULA")) {
-            randomChange -= 0.05; // Slight downward trend
+            randomChange += 0.05; // Very slight upward trend
         } else if (stockName.equals("MAX")) {
-            // Reduced growth to be more similar to other stocks
-            randomChange += 0.08 + Math.sin(times.size() * 0.07) * 0.5; // Mild trend with small oscillation
+            // Completely different approach for MAX to prevent sudden drops
+            // Reduce volatility by using a smaller random factor
+            randomChange = (Math.random() - 0.4) * 2.0; // Less volatile, slightly upward bias
+            
+            // Add a small consistent growth factor
+            randomChange += 0.12;
+            
+            // Additional stability check specifically for MAX
+            if (lastPrice > 0 && Math.abs(randomChange / lastPrice) > 0.03) {
+                // Limit change to 3% of current price to prevent dramatic shifts
+                randomChange = Math.signum(randomChange) * lastPrice * 0.03;
+            }
         }
+
+        // Limit extreme changes to prevent sudden drops or spikes
+        randomChange = Math.max(-2.0, Math.min(2.0, randomChange));
 
         double newPrice = Math.max(1, lastPrice + randomChange); // Ensure price stays positive
 
@@ -316,5 +329,13 @@ public class StockChartPanel extends JPanel {
         // Update all stocks
         updateAllStocks();
         chartPanel.repaint();
+    }
+
+    public double getCurrentPrice(String stockName) {
+        CopyOnWriteArrayList<Double> prices = stockPrices.get(stockName);
+        if (prices != null && !prices.isEmpty()) {
+            return prices.get(prices.size() - 1);
+        }
+        return 0.0;
     }
 }
