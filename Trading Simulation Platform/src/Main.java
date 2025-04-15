@@ -57,24 +57,31 @@ public class Main {
 
         // Add a stylish logo/header
         JLabel logoLabel = new JLabel("STOCK MARKET SIMULATOR", SwingConstants.CENTER);
-        logoLabel.setFont(new Font("Montserrat", Font.BOLD, 48));  // Bigger font
+        logoLabel.setFont(new Font("Montserrat", Font.BOLD, 48));
         logoLabel.setForeground(Color.WHITE);
-        logoLabel.setBounds(100, 100, 1000, 70);  // Wider and lower
+        // Center horizontally and position at 15% of screen height
+        logoLabel.setBounds(0, (int)(screenSize.height * 0.15), screenSize.width, 70);
         welcomeScreen.add(logoLabel);
 
         // Add a tagline
-        JLabel taglineLabel = new JLabel("Mykyta Grogul", SwingConstants.CENTER);
-        taglineLabel.setFont(new Font("Segoe UI", Font.ITALIC, 24));  // Bigger font
+        JLabel taglineLabel = new JLabel("Trade. Invest. Profit.", SwingConstants.CENTER);
+        taglineLabel.setFont(new Font("Segoe UI", Font.ITALIC, 24));
         taglineLabel.setForeground(new Color(0, 185, 255)); // Light blue
-        taglineLabel.setBounds(100, 180, 1000, 40);  // Wider and adjusted position
+        // Center horizontally and position below the logo
+        taglineLabel.setBounds(0, (int)(screenSize.height * 0.25), screenSize.width, 40);
         welcomeScreen.add(taglineLabel);
 
         // Create a stylish Enter button
         JButton enterButton = new JButton("START TRADING");
-        enterButton.setFont(new Font("Segoe UI", Font.BOLD, 20));  // Bigger font
+        enterButton.setFont(new Font("Segoe UI", Font.BOLD, 20));
         enterButton.setBackground(new Color(50, 168, 82)); // Green
         enterButton.setForeground(Color.WHITE);
-        enterButton.setBounds(450, 350, 300, 80);  // Centered horizontally
+        // Center horizontally at 50% of screen width and position at 45% of screen height
+        int buttonWidth = 300;
+        int buttonHeight = 80;
+        enterButton.setBounds((screenSize.width - buttonWidth) / 2, 
+                             (int)(screenSize.height * 0.45), 
+                             buttonWidth, buttonHeight);
         enterButton.setFocusPainted(false);
         enterButton.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
         enterButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -85,7 +92,10 @@ public class Main {
         quitButton.setFont(new Font("Segoe UI", Font.BOLD, 18));
         quitButton.setBackground(new Color(220, 53, 69)); // Red
         quitButton.setForeground(Color.WHITE);
-        quitButton.setBounds(450, 450, 300, 60); // Below the enter button
+        // Center horizontally at 50% of screen width and position below enter button
+        quitButton.setBounds((screenSize.width - buttonWidth) / 2, 
+                           (int)(screenSize.height * 0.6), 
+                           buttonWidth, 60);
         quitButton.setFocusPainted(false);
         quitButton.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
         quitButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
