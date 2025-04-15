@@ -63,7 +63,7 @@ public class Main {
         welcomeScreen.add(logoLabel);
 
         // Add a tagline
-        JLabel taglineLabel = new JLabel("Trade. Invest. Profit.", SwingConstants.CENTER);
+        JLabel taglineLabel = new JLabel("Mykyta Grogul", SwingConstants.CENTER);
         taglineLabel.setFont(new Font("Segoe UI", Font.ITALIC, 24));  // Bigger font
         taglineLabel.setForeground(new Color(0, 185, 255)); // Light blue
         taglineLabel.setBounds(100, 180, 1000, 40);  // Wider and adjusted position
@@ -93,8 +93,8 @@ public class Main {
         welcomeScreen.add(quitButton);
 
         // Add a bottom credit line
-        JLabel creditLabel = new JLabel("© 2023 Stock Simulator", SwingConstants.CENTER);
-        creditLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        JLabel creditLabel = new JLabel("© 2025 Stock Simulator | Developed by Mykyta Grogul", SwingConstants.CENTER);
+        creditLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         creditLabel.setForeground(new Color(150, 150, 150));
         creditLabel.setBounds(0, screenSize.height - 40, screenSize.width, 20);  // Adjusted for screen height
         welcomeScreen.add(creditLabel);
