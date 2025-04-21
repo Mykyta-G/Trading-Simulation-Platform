@@ -19,6 +19,17 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Position;
 import javax.swing.text.Element;
 import java.util.ArrayList;
+import javax.swing.JSplitPane;
+import javax.swing.plaf.basic.BasicSplitPaneUI;
+import javax.swing.plaf.basic.BasicSplitPaneDivider;
+import javax.swing.border.Border;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import javax.swing.plaf.basic.BasicScrollBarUI;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 
 public class Main {
     public static void main(String[] args) {
@@ -217,19 +228,12 @@ public class Main {
         
         ConsoleLogger logger = new ConsoleLogger();
 
-        // Create left panel for stocks
-        JPanel stocksPanel = new JPanel();
-        stocksPanel.setLayout(new BoxLayout(stocksPanel, BoxLayout.Y_AXIS));
-        stocksPanel.setBackground(new Color(35, 47, 62));
-        stocksPanel.setPreferredSize(new Dimension(350, 0));  // Increased width
-        stocksPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // Added more padding
-
         // Create a single chart showing all three stocks
         StockChartPanel chartPanel = new StockChartPanel();
         chartPanel.addStock("IKEA", 250);
         chartPanel.addStock("JULA", 225);
         chartPanel.addStock("MAX", 200);
-
+        
         // Stocks and their prices
         Map<String, Integer> investables = new HashMap<>();
         investables.put("IKEA", 250);
@@ -271,6 +275,12 @@ public class Main {
         stocksOwned.put("IKEA", 0);
         stocksOwned.put("JULA", 0);
         stocksOwned.put("MAX", 0);
+        
+        // Map to store purchase prices for each stock
+        Map<String, java.util.List<Double>> purchasePrices = new HashMap<>();
+        purchasePrices.put("IKEA", new ArrayList<>());
+        purchasePrices.put("JULA", new ArrayList<>());
+        purchasePrices.put("MAX", new ArrayList<>());
 
         // Add a Map for stock colors right after your other maps (line ~86):
         Map<String, Color> stockColors = new HashMap<>();
@@ -278,7 +288,40 @@ public class Main {
         stockColors.put("JULA", new Color(220, 53, 69)); // Red
         stockColors.put("MAX", new Color(40, 167, 69)); // Green
 
-        // Add stocks to the left panel instead of deployable grid
+        // Create the main container with BorderLayout to use full width
+        JPanel mainContainer = new JPanel(new BorderLayout(0, 0));
+        mainContainer.setBackground(new Color(35, 47, 62));
+        
+        // Create left panel for stocks with fixed width
+        JPanel stocksPanel = new JPanel();
+        stocksPanel.setLayout(new BoxLayout(stocksPanel, BoxLayout.Y_AXIS));
+        stocksPanel.setBackground(new Color(35, 47, 62));
+        stocksPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));  // Added more padding
+        
+        // Set preferred size for stock panels - maximizing usable space
+        int stockPanelWidth = 320;
+        
+        // Make stocks panel scrollable
+        JScrollPane stocksScrollPane = new JScrollPane(stocksPanel);
+        stocksScrollPane.setBackground(new Color(35, 47, 62));
+        stocksScrollPane.setBorder(BorderFactory.createEmptyBorder());
+        stocksScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        stocksScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        stocksScrollPane.getVerticalScrollBar().setUnitIncrement(16); // Smoother scrolling
+        
+        // Set preferred size for the left panel - adequate width to fit content
+        stocksScrollPane.setPreferredSize(new Dimension(stockPanelWidth, screenSize.height));
+        
+        // Customize the scroll bar
+        stocksScrollPane.getVerticalScrollBar().setUI(new BasicScrollBarUI() {
+            @Override
+            protected void configureScrollBarColors() {
+                this.thumbColor = new Color(70, 80, 90);
+                this.trackColor = new Color(45, 57, 72);
+            }
+        });
+
+        // Add stocks to the left panel
         Map<String, JLabel> stockLabels = new HashMap<>();
         for (Map.Entry<String, Integer> entry : investables.entrySet()) {
             String stockName = entry.getKey();
@@ -287,16 +330,14 @@ public class Main {
             JPanel stockPanel = new JPanel();
             stockPanel.setLayout(new BorderLayout());
             stockPanel.setBackground(new Color(35, 47, 62));
-            stockPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(60, 70, 80)));
-            stockPanel.setPreferredSize(new Dimension(330, 100));  // Increased size
-            stockPanel.setMaximumSize(new Dimension(330, 100));  // Increased size
             stockPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(60, 70, 80)),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)  // Added internal padding
             ));
+            stockPanel.setMaximumSize(new Dimension(stockPanelWidth, 300)); // Match the new width
 
             // Left side: stock info
-            JPanel infoPanel = new JPanel(new GridLayout(2, 1, 0, 10));
+            JPanel infoPanel = new JPanel(new BorderLayout());
             infoPanel.setBackground(new Color(35, 47, 62));
             infoPanel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 15)); // Reduced right padding
             
@@ -316,45 +357,124 @@ public class Main {
             topRow.add(stockLabel, BorderLayout.WEST);
             stockLabels.put(stockName, stockLabel);
             
-            JLabel ownedLabel = new JLabel("Owned: 0");
-            ownedLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-            ownedLabel.setForeground(Color.WHITE);
-            ownedLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 5)); // Reduced right padding
-            topRow.add(ownedLabel, BorderLayout.EAST);
+            // Create middle panel for current price
+            JPanel middlePanel = new JPanel(new BorderLayout());
+            middlePanel.setBackground(new Color(35, 47, 62));
             
             JLabel priceLabel = new JLabel("$" + String.format("%.2f", (double)stockPrice));
             priceLabel.setFont(new Font("Segoe UI", Font.BOLD, 22)); // Increased font size
             priceLabel.setForeground(Color.WHITE);
+            priceLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0)); // Add vertical padding
+            middlePanel.add(priceLabel, BorderLayout.WEST);
             
-            infoPanel.add(topRow);
-            infoPanel.add(priceLabel);
+            // Create bottom panel for purchase info
+            JPanel bottomPanel = new JPanel(new BorderLayout());
+            bottomPanel.setBackground(new Color(35, 47, 62));
+            
+            // Add all panels to infoPanel
+            infoPanel.add(topRow, BorderLayout.NORTH);
+            infoPanel.add(middlePanel, BorderLayout.CENTER);
+            infoPanel.add(bottomPanel, BorderLayout.SOUTH);
+            
+            // Create description panel
+            JPanel descriptionPanel = new JPanel(new BorderLayout());
+            descriptionPanel.setBackground(new Color(35, 47, 62));
+            descriptionPanel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0));
+            
+            JTextArea descriptionText = new JTextArea();
+            descriptionText.setBackground(new Color(40, 52, 67));
+            descriptionText.setForeground(new Color(200, 200, 200));
+            descriptionText.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+            descriptionText.setLineWrap(true);
+            descriptionText.setWrapStyleWord(true);
+            descriptionText.setEditable(false);
+            descriptionText.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+            
+            // Set company descriptions
+            String description = "";
+            if (stockName.equals("IKEA")) {
+                description = "IKEA is a multinational furniture retailer known for its ready-to-assemble furniture, kitchen appliances, and home accessories. Founded in Sweden, it has become the world's largest furniture retailer since 2008.";
+            } else if (stockName.equals("JULA")) {
+                description = "Jula is a Swedish chain of department stores offering hardware, tools, gardening supplies, and household items. The company has expanded throughout Scandinavia with a focus on DIY products at competitive prices.";
+            } else if (stockName.equals("MAX")) {
+                description = "MAX is Sweden's oldest hamburger chain, founded in 1968. The company focuses on high-quality, locally-sourced ingredients and was the first hamburger chain in the world to label its products with carbon emissions data.";
+            }
+            
+            descriptionText.setText(description);
+            descriptionPanel.add(descriptionText, BorderLayout.CENTER);
+            
+            // Always show description - no toggle needed anymore
+            infoPanel.add(descriptionPanel, BorderLayout.SOUTH);
+            
+            // Add main info panel to stock panel
             stockPanel.add(infoPanel, BorderLayout.CENTER);
             
-            // Right side: buttons
-            JPanel buttonPanel = new JPanel(new GridLayout(2, 1, 0, 8)); // Increased gap
+            // Create buttons panel at the bottom
+            JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 10, 0));
             buttonPanel.setBackground(new Color(35, 47, 62));
-            buttonPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 5)); // Added left padding
+            buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
             
+            // Create Buy button
             JButton buyButton = new JButton("Buy");
-            buyButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            buyButton.setBackground(new Color(40, 167, 69));
+            buyButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            buyButton.setBackground(new Color(40, 167, 69)); // Green
             buyButton.setForeground(Color.WHITE);
             buyButton.setFocusPainted(false);
-            buyButton.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-            buyButton.setPreferredSize(new Dimension(70, 35)); // Increased width slightly
+            buyButton.setOpaque(true);
+            
+            // Create rounded border and better styling
+            buyButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(30, 130, 55), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
             buttonPanel.add(buyButton);
             
+            // Create Sell button
             JButton sellButton = new JButton("Sell");
-            sellButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            sellButton.setBackground(new Color(220, 53, 69));
+            sellButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            sellButton.setBackground(new Color(220, 53, 69)); // Red
             sellButton.setForeground(Color.WHITE);
             sellButton.setEnabled(false);
             sellButton.setFocusPainted(false);
-            sellButton.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-            sellButton.setPreferredSize(new Dimension(70, 35)); // Increased width slightly
+            sellButton.setOpaque(true);
+            
+            // Create rounded border and better styling
+            sellButton.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 40, 50), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
             buttonPanel.add(sellButton);
             
-            stockPanel.add(buttonPanel, BorderLayout.EAST);
+            // Add buttons panel below info panel
+            stockPanel.add(buttonPanel, BorderLayout.SOUTH);
+            
+            // Add ownership info panel at the bottom
+            JPanel ownershipPanel = new JPanel(new BorderLayout(0, 2));
+            ownershipPanel.setBackground(new Color(35, 47, 62));
+            ownershipPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
+            
+            // Create vertical panel for owned count and average price
+            JPanel ownershipInfoPanel = new JPanel(new GridLayout(2, 1, 0, 2));
+            ownershipInfoPanel.setBackground(new Color(35, 47, 62));
+            
+            JLabel ownedLabel = new JLabel("Owned: 0");
+            ownedLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            ownedLabel.setForeground(Color.WHITE);
+            ownershipInfoPanel.add(ownedLabel);
+            
+            // Add purchase info label
+            JLabel purchaseInfoLabel = new JLabel("");
+            purchaseInfoLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            purchaseInfoLabel.setForeground(new Color(220, 220, 220));
+            ownershipInfoPanel.add(purchaseInfoLabel);
+            
+            // Add ownership info panel to main ownership panel
+            ownershipPanel.add(ownershipInfoPanel, BorderLayout.CENTER);
+            
+            // Add ownership panel to main panel - move to top for better visibility
+            topRow.add(ownershipPanel, BorderLayout.EAST);
+            
+            // Add stock panel to main container
             stocksPanel.add(stockPanel);
             stocksPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
@@ -375,6 +495,12 @@ public class Main {
                         int owned = stocksOwned.get(stockName) + 1;
                         stocksOwned.put(stockName, owned);
                         ownedLabel.setText("Owned: " + owned);
+                        
+                        // Store purchase price
+                        purchasePrices.get(stockName).add(currentPrice);
+                        
+                        // Update purchase info display
+                        updatePurchaseInfo(stockName, purchaseInfoLabel, purchasePrices.get(stockName));
                         
                         // Enable sell button if at least one stock is owned
                         sellButton.setEnabled(true);
@@ -459,6 +585,14 @@ public class Main {
                         stocksOwned.put(stockName, owned);
                         ownedLabel.setText("Owned: " + owned);
                         
+                        // Remove the oldest purchase price (FIFO)
+                        if (!purchasePrices.get(stockName).isEmpty()) {
+                            purchasePrices.get(stockName).remove(0);
+                        }
+                        
+                        // Update purchase info display
+                        updatePurchaseInfo(stockName, purchaseInfoLabel, purchasePrices.get(stockName));
+                        
                         // Disable sell button if no stocks left
                         if (owned == 0) {
                             sellButton.setEnabled(false);
@@ -513,15 +647,54 @@ public class Main {
         
         consolePanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Add stocks and console to the left panel
+        // Add stocks and console to the left container
         JPanel leftContainerPanel = new JPanel(new BorderLayout());
         leftContainerPanel.setBackground(new Color(35, 47, 62));
-        leftContainerPanel.add(stocksPanel, BorderLayout.CENTER);
+        leftContainerPanel.add(stocksScrollPane, BorderLayout.CENTER);
         leftContainerPanel.add(consolePanel, BorderLayout.SOUTH);
-
-        // Add components to content panel
-        contentPanel.add(leftContainerPanel, BorderLayout.WEST);
-        contentPanel.add(chartPanel, BorderLayout.CENTER);
+        
+        // Create and configure the split pane for the proper layout
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftContainerPanel, chartPanel);
+        splitPane.setDividerLocation(stockPanelWidth + 40); // Account for padding
+        splitPane.setDividerSize(6); // Thinner divider
+        splitPane.setBorder(null); // Remove border
+        splitPane.setBackground(new Color(35, 47, 62));
+        splitPane.setContinuousLayout(true);
+        splitPane.setOneTouchExpandable(false);
+        
+        // Style the divider to match the background color
+        splitPane.setUI(new BasicSplitPaneUI() {
+            @Override
+            public BasicSplitPaneDivider createDefaultDivider() {
+                BasicSplitPaneDivider divider = new BasicSplitPaneDivider(this) {
+                    @Override
+                    public void paint(Graphics g) {
+                        g.setColor(new Color(35, 47, 62)); // Match the background color
+                        g.fillRect(0, 0, getWidth(), getHeight());
+                    }
+                };
+                divider.setBackground(new Color(35, 47, 62));
+                divider.setBorder(null);
+                return divider;
+            }
+        });
+        
+        // Prevent divider from being moved by making it non-resizable
+        splitPane.setEnabled(false);
+        
+        // Add a component listener to maintain the divider position even when the window is resized
+        splitPane.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                splitPane.setDividerLocation(stockPanelWidth + 40);
+            }
+        });
+        
+        // Add the split pane to the main content panel
+        mainContainer.add(splitPane, BorderLayout.CENTER);
+        
+        // Add the main container to the content panel
+        contentPanel.add(mainContainer, BorderLayout.CENTER);
 
         // Add panels to simulation screen
         simulationScreen.add(controlPanel, BorderLayout.NORTH);
@@ -592,28 +765,64 @@ public class Main {
         }
     }
 
+    // Helper method to update purchase info display
+    private static void updatePurchaseInfo(String stockName, JLabel infoLabel, java.util.List<Double> prices) {
+        if (prices.isEmpty()) {
+            infoLabel.setText("");
+            return;
+        }
+        
+        // Calculate average purchase price
+        double total = 0;
+        for (Double price : prices) {
+            total += price;
+        }
+        double avgPrice = total / prices.size();
+        
+        // Display only the average purchase price (shorter text) with more emphasis
+        infoLabel.setText("Avg: $" + String.format("%.2f", avgPrice));
+        
+        // Make the font bold and slightly larger for better visibility
+        infoLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        
+        // Use a brighter color for better contrast
+        infoLabel.setForeground(new Color(220, 220, 220));
+    }
+
     private static void updateStockLabel(String stockName, double currentPrice, Map<String, JLabel> labels) {
         JLabel label = labels.get(stockName);
         if (label != null) {
-            // Find the price label (should be in a different hierarchy now)
-            JPanel parentPanel = (JPanel)label.getParent().getParent().getParent(); // Get to the main stock panel
-            Component[] components = ((JPanel)label.getParent().getParent()).getComponents();
-            
-            if (components.length > 1 && components[1] instanceof JLabel) {
-                JLabel priceLabel = (JLabel)components[1];
-                double oldPrice = 0;
-                try {
-                    String oldText = priceLabel.getText().substring(1); // Remove $
-                    oldPrice = Double.parseDouble(oldText);
-                } catch (Exception e) {
-                    oldPrice = currentPrice;
+            try {
+                // Navigate through the container hierarchy to find the price label
+                Container parent = label.getParent();
+                while (!(parent instanceof JPanel && ((JPanel)parent).getLayout() instanceof BorderLayout)) {
+                    parent = parent.getParent();
+                    if (parent == null) return;
                 }
                 
-                // Always white text, but could add slight green/red tint
-                priceLabel.setForeground(Color.WHITE);
+                JPanel infoPanel = (JPanel)parent;
+                Component[] components = infoPanel.getComponents();
                 
-                // Update the text
-                priceLabel.setText("$" + String.format("%.2f", currentPrice));
+                for (Component comp : components) {
+                    if (comp instanceof JPanel) {
+                        JPanel panel = (JPanel)comp;
+                        Component[] panelComps = panel.getComponents();
+                        
+                        for (Component panelComp : panelComps) {
+                            if (panelComp instanceof JLabel) {
+                                JLabel compLabel = (JLabel)panelComp;
+                                String text = compLabel.getText();
+                                if (text != null && text.startsWith("$")) {
+                                    // Found price label
+                                    compLabel.setText("$" + String.format("%.2f", currentPrice));
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error updating stock label: " + e.getMessage());
             }
         }
     }
