@@ -219,7 +219,12 @@ public class StockChartPanel extends JPanel {
         chartPanel.repaint();
     }
 
-    private void startUpdating() {
+    public void startUpdating() {
+        // If a timer already exists, stop it first
+        if (updateTimer != null && updateTimer.isRunning()) {
+            updateTimer.stop();
+        }
+        
         updateTimer = new Timer(1000, e -> {
             // Update all stock prices
             updateAllStocks();
@@ -237,7 +242,15 @@ public class StockChartPanel extends JPanel {
         }
     }
 
-    private void updateStockPrice(String stockName) {
+    public void updateStock(String stockName) {
+        if (stockPrices.containsKey(stockName)) {
+            updateStockPrice(stockName);
+            chartPanel.repaint();
+        }
+    }
+
+    // Make this method public and expose it directly
+    public void updateStockPrice(String stockName) {
         CopyOnWriteArrayList<Double> prices = stockPrices.get(stockName);
         CopyOnWriteArrayList<Double> times = stockTimes.get(stockName);
 
@@ -309,13 +322,6 @@ public class StockChartPanel extends JPanel {
         double padding = (maxPrice - minPrice) * 0.1;
         chart.getStyler().setYAxisMin(Math.max(0, minPrice - padding));
         chart.getStyler().setYAxisMax(maxPrice + padding);
-    }
-
-    public void updateStock(String stockName) {
-        if (stockPrices.containsKey(stockName)) {
-            updateStockPrice(stockName);
-            chartPanel.repaint();
-        }
     }
 
     public void stopUpdating() {

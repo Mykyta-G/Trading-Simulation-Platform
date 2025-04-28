@@ -6,8 +6,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.HashMap;
 import java.util.Map;
-import org.knowm.xchart.*;
-import org.knowm.xchart.style.Styler;
+// Temporarily comment out XChart imports until library is available
+// import org.knowm.xchart.*;
+// import org.knowm.xchart.style.Styler;
 import java.util.concurrent.CopyOnWriteArrayList;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.SimpleAttributeSet;
@@ -30,8 +31,12 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 
 public class Main {
+    // Add profileManager to the Main class
+    private static ProfileManager profileManager;
+
     public static void main(String[] args) {
         // Fix for high DPI displays
         System.setProperty("sun.java2d.uiScale", "1.0");
@@ -142,17 +147,17 @@ public class Main {
         titleLabel.setBounds(160, 15, 300, 30);  // Moved right to not overlap with back button
         controlPanel.add(titleLabel);
 
-        // Balance display with icon
+        // Modify Balance display position (adjust position due to profile panel)
         JLabel balanceIcon = new JLabel("💰");
         balanceIcon.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 24));
         balanceIcon.setForeground(new Color(255, 215, 0));  // Gold color for better visibility
-        balanceIcon.setBounds(screenSize.width - 240, 15, 30, 30);  // Move to far right corner
+        balanceIcon.setBounds(screenSize.width - 150, 15, 30, 30);  // Adjusted position
         controlPanel.add(balanceIcon);
 
         JLabel BalanceView = new JLabel("$" + String.format("%.2f", balance[0]));
         BalanceView.setFont(new Font("Segoe UI", Font.BOLD, 22));
         BalanceView.setForeground(new Color(50, 168, 82));
-        BalanceView.setBounds(screenSize.width - 200, 15, 200, 30);  // Move to far right corner
+        BalanceView.setBounds(screenSize.width - 110, 15, 100, 30);  // Adjusted position
         controlPanel.add(BalanceView);
 
         // Back button with icon
@@ -288,6 +293,18 @@ public class Main {
         stockColors.put("JULA", new Color(220, 53, 69)); // Red
         stockColors.put("MAX", new Color(40, 167, 69)); // Green
 
+        // Initialize profile manager (without callback yet)
+        profileManager = new ProfileManager(frame, stocksOwned, balance, currentPrices);
+
+        // Add profile panel to the control panel
+        JPanel profilePanel = profileManager.createProfilePanel();
+        profilePanel.setBounds(screenSize.width - 350, 12, 200, 36);
+        controlPanel.add(profilePanel);
+
+        // Also fix the balance icon and label positions
+        balanceIcon.setBounds(screenSize.width - 150, 15, 30, 30);  // Adjusted position
+        BalanceView.setBounds(screenSize.width - 110, 15, 100, 30);  // Adjusted position
+
         // Create the main container with BorderLayout to use full width
         JPanel mainContainer = new JPanel(new BorderLayout(0, 0));
         mainContainer.setBackground(new Color(35, 47, 62));
@@ -323,6 +340,7 @@ public class Main {
 
         // Add stocks to the left panel
         Map<String, JLabel> stockLabels = new HashMap<>();
+        Map<String, JLabel> priceLabels = new HashMap<>(); // Direct mapping to price labels
         for (Map.Entry<String, Integer> entry : investables.entrySet()) {
             String stockName = entry.getKey();
             int stockPrice = entry.getValue();
@@ -366,6 +384,7 @@ public class Main {
             priceLabel.setForeground(Color.WHITE);
             priceLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0)); // Add vertical padding
             middlePanel.add(priceLabel, BorderLayout.WEST);
+            priceLabels.put(stockName, priceLabel); // Store direct reference to price label
             
             // Create bottom panel for purchase info
             JPanel bottomPanel = new JPanel(new BorderLayout());
@@ -509,12 +528,21 @@ public class Main {
                         System.out.println(message);
                         logger.log(message);
                         
+                        // Record purchase in profile manager
+                        if (profileManager.isLoggedIn()) {
+                            profileManager.recordPurchase(stockName, currentPrice);
+                        }
+                        
                         // Update the chart without changing the price locally
                         // The price is fully managed by the chart panel now
                         chartPanel.updateStock(stockName);
                         
-                        // Update the label with new price from chart
-                        updateStockLabel(stockName, chartPanel.getCurrentPrice(stockName), stockLabels);
+                        // Update the label with new price from chart directly
+                        JLabel priceLabel = priceLabels.get(stockName);
+                        if (priceLabel != null) {
+                            priceLabel.setText("$" + String.format("%.2f", chartPanel.getCurrentPrice(stockName)));
+                            priceLabel.repaint();
+                        }
                     } else {
                         // Show popup if not enough money
                         String message = "Not enough balance to buy " + stockName + "!";
@@ -602,12 +630,21 @@ public class Main {
                         System.out.println(message);
                         logger.log(message);
                         
+                        // Record sale in profile manager
+                        if (profileManager.isLoggedIn()) {
+                            profileManager.recordSale(stockName, currentPrice);
+                        }
+                        
                         // Update the chart without changing the price locally
                         // The price is fully managed by the chart panel now
                         chartPanel.updateStock(stockName);
                         
-                        // Update the label with new price from chart
-                        updateStockLabel(stockName, chartPanel.getCurrentPrice(stockName), stockLabels);
+                        // Update the label with new price from chart directly
+                        JLabel priceLabel = priceLabels.get(stockName);
+                        if (priceLabel != null) {
+                            priceLabel.setText("$" + String.format("%.2f", chartPanel.getCurrentPrice(stockName)));
+                            priceLabel.repaint();
+                        }
                     }
                 }
             });
@@ -628,7 +665,7 @@ public class Main {
         
         // Create console panel with styled scrollbar
         JScrollPane scrollPane = new JScrollPane(consoleTextArea);
-        scrollPane.setPreferredSize(new Dimension(330, 180));
+        scrollPane.setPreferredSize(new Dimension(330, 240)); // Make this taller since we don't have tabs
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         
         // Hide scrollbar but keep functionality
@@ -647,7 +684,7 @@ public class Main {
         
         consolePanel.add(scrollPane, BorderLayout.CENTER);
 
-        // Add stocks and console to the left container
+        // Add stocks and console to the left container (directly, no tabbed pane)
         JPanel leftContainerPanel = new JPanel(new BorderLayout());
         leftContainerPanel.setBackground(new Color(35, 47, 62));
         leftContainerPanel.add(stocksScrollPane, BorderLayout.CENTER);
@@ -701,7 +738,7 @@ public class Main {
         simulationScreen.add(contentPanel, BorderLayout.CENTER);
 
         // Create a timer to update the stock prices
-        Timer priceUpdateTimer = new Timer(1000, e -> {
+        Timer priceUpdateTimer = new Timer(500, e -> {  // Faster updates (every 500ms instead of 1000ms)
             // Update prices using a more realistic algorithm
             for (String stockName : investables.keySet()) {
                 // Get the current price directly from the chart for accuracy
@@ -710,8 +747,12 @@ public class Main {
                 // Update our tracking maps with the actual chart price
                 currentPrices.put(stockName, price);
                 
-                // Update stock label with the chart's actual price
-                updateStockLabel(stockName, price, stockLabels);
+                // Directly update the price label using our direct reference
+                JLabel priceLabel = priceLabels.get(stockName);
+                if (priceLabel != null) {
+                    priceLabel.setText("$" + String.format("%.2f", price));
+                    priceLabel.repaint();
+                }
                 
                 // The following code is now redundant since we're getting prices from the chart
                 // But we'll leave these variables intact for possible future changes
@@ -730,16 +771,82 @@ public class Main {
                     timeSinceJump.put(stockName, ticksSinceJump + 1);
                 }
             }
+            
+            // Update profile data if logged in
+            if (profileManager.isLoggedIn()) {
+                profileManager.saveUserData();
+            }
+            
+            // Force UI update to ensure labels are refreshed
+            stocksPanel.revalidate();
+            stocksPanel.repaint();
+            
+            // Force repaint of each visible component in the hierarchy
+            for (Component comp : stocksPanel.getComponents()) {
+                if (comp.isVisible() && comp instanceof JPanel) {
+                    comp.revalidate();
+                    comp.repaint();
+                }
+            }
         });
+        priceUpdateTimer.setInitialDelay(200); // Faster initial update
         priceUpdateTimer.start();
+
+        // Add window listener to ensure the timer is restarted if the window is deactivated/reactivated
+        // and save notes when application is closing
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowActivated(WindowEvent e) {
+                // Restart the chart and price updates when window is activated
+                if (!priceUpdateTimer.isRunning()) {
+                    priceUpdateTimer.restart();
+                    chartPanel.startUpdating();
+                }
+            }
+            
+            @Override
+            public void windowClosing(WindowEvent e) {
+                // Save profile data when application is closing
+                profileManager.onExit();
+            }
+        });
 
         // Toggle the deployable grid
         enterButton.addActionListener(e -> {
+            // Show simulation screen
             cardLayout.show(mainPanel, "Simulation");
-            priceUpdateTimer.start();
+            
+            // Ensure timers are running when entering simulation screen
+            if (!priceUpdateTimer.isRunning()) {
+                priceUpdateTimer.restart();
+            }
+            chartPanel.startUpdating(); // Always restart chart updates
+            
+            // Force update of all stock labels immediately
+            for (String stockName : investables.keySet()) {
+                double currentPrice = chartPanel.getCurrentPrice(stockName);
+                JLabel priceLabel = priceLabels.get(stockName);
+                if (priceLabel != null) {
+                    priceLabel.setText("$" + String.format("%.2f", currentPrice));
+                    priceLabel.repaint();
+                }
+            }
+            
+            // Force UI refresh
+            stocksPanel.revalidate();
+            stocksPanel.repaint();
+            
+            chartPanel.updateChart(); // Force an immediate update
         });
         backButton.addActionListener(e -> {
+            // Save profile data before going back
+            if (profileManager.isLoggedIn()) {
+                profileManager.saveUserData();
+            }
+            
+            // Show welcome screen
             cardLayout.show(mainPanel, "Welcome");
+            
             // Stop chart updates and price updates when going back to welcome screen
             chartPanel.stopUpdating();
             priceUpdateTimer.stop();
@@ -763,6 +870,57 @@ public class Main {
         } catch (Exception e) {
             System.out.println("Failed to load icon: " + e.getMessage());
         }
+
+        // Now define the updateStockPanels callback after stocksPanel has been created
+        profileManager.updateStockPanels = () -> {
+            System.out.println("Updating stock panels with profile data");
+            
+            // Update UI for each stock based on profile data
+            for (Map.Entry<String, Integer> entry : stocksOwned.entrySet()) {
+                String stockName = entry.getKey();
+                int quantity = entry.getValue();
+                
+                // Find the corresponding panel components
+                for (Component component : stocksPanel.getComponents()) {
+                    if (component instanceof JPanel) {
+                        JPanel stockPanel = (JPanel) component;
+                        boolean isTargetStock = false;
+                        
+                        // Look through all components to find the stock name
+                        for (Component child : stockPanel.getComponents()) {
+                            if (child instanceof JPanel) {
+                                for (Component innerChild : ((JPanel) child).getComponents()) {
+                                    if (innerChild instanceof JPanel) {
+                                        for (Component leafComponent : ((JPanel) innerChild).getComponents()) {
+                                            if (leafComponent instanceof JLabel) {
+                                                JLabel label = (JLabel) leafComponent;
+                                                if (label.getText().equals(stockName)) {
+                                                    isTargetStock = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (isTargetStock) {
+                            // Update owned count and enable/disable sell button
+                            updatePanelForStock(stockPanel, stockName, quantity);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Force UI update
+            stocksPanel.revalidate();
+            stocksPanel.repaint();
+            
+            // Update balance display
+            BalanceView.setText("$" + String.format("%.2f", balance[0]));
+        };
     }
 
     // Helper method to update purchase info display
@@ -801,28 +959,118 @@ public class Main {
                 }
                 
                 JPanel infoPanel = (JPanel)parent;
-                Component[] components = infoPanel.getComponents();
                 
+                // Check each component in the panel to find "middlePanel" 
+                // which contains the price label
+                Component[] components = infoPanel.getComponents();
                 for (Component comp : components) {
                     if (comp instanceof JPanel) {
-                        JPanel panel = (JPanel)comp;
-                        Component[] panelComps = panel.getComponents();
+                        Component[] panelComps = ((JPanel)comp).getComponents();
                         
+                        // Look through all components inside this panel
                         for (Component panelComp : panelComps) {
                             if (panelComp instanceof JLabel) {
                                 JLabel compLabel = (JLabel)panelComp;
                                 String text = compLabel.getText();
+                                // Match labels that start with $ (price labels)
                                 if (text != null && text.startsWith("$")) {
-                                    // Found price label
+                                    // Found the price label, update it
                                     compLabel.setText("$" + String.format("%.2f", currentPrice));
-                                    break;
+                                    // Force the component to repaint
+                                    compLabel.repaint();
+                                    return; // Exit after finding and updating
                                 }
                             }
                         }
                     }
                 }
+                
+                // If we didn't find it with the first approach, try a more aggressive approach
+                // by searching all nested components
+                searchAndUpdatePriceLabel(infoPanel, currentPrice);
+                
             } catch (Exception e) {
                 System.err.println("Error updating stock label: " + e.getMessage());
+            }
+        }
+    }
+    
+    // Helper method to recursively search for and update price labels
+    private static void searchAndUpdatePriceLabel(Container container, double price) {
+        Component[] components = container.getComponents();
+        
+        for (Component comp : components) {
+            if (comp instanceof JLabel) {
+                JLabel label = (JLabel)comp;
+                String text = label.getText();
+                if (text != null && text.startsWith("$")) {
+                    // Found price label
+                    label.setText("$" + String.format("%.2f", price));
+                    label.repaint();
+                    return;
+                }
+            }
+            
+            if (comp instanceof Container) {
+                // Recursively search nested containers
+                searchAndUpdatePriceLabel((Container)comp, price);
+            }
+        }
+    }
+
+    // Helper method to update a stock panel with current owned count
+    private static void updatePanelForStock(JPanel stockPanel, String stockName, int quantity) {
+        System.out.println("Updating panel for " + stockName + " with quantity: " + quantity);
+        
+        // Find the owned label and purchase info
+        JLabel ownedLabel = null;
+        JLabel purchaseInfoLabel = null;
+        JButton sellButton = null;
+        
+        // Recursively search all child components for labels and buttons
+        findAndUpdateComponents(stockPanel, stockName, quantity);
+    }
+
+    // New recursive method to find and update all relevant components in the panel
+    private static void findAndUpdateComponents(Container container, String stockName, int quantity) {
+        for (Component comp : container.getComponents()) {
+            // Check if this component is a label with "Owned:" text
+            if (comp instanceof JLabel) {
+                JLabel label = (JLabel) comp;
+                String text = label.getText();
+                
+                if (text != null) {
+                    if (text.startsWith("Owned:")) {
+                        System.out.println("Found Owned label for " + stockName + ", updating to: Owned: " + quantity);
+                        label.setText("Owned: " + quantity);
+                    } else if (text.equals(stockName)) {
+                        System.out.println("Found stock name label: " + stockName);
+                    } else if (text.startsWith("Avg:") || text.isEmpty()) {
+                        // This is likely the purchase info label
+                        if (profileManager.isLoggedIn()) {
+                            double avgPurchase = profileManager.getAveragePurchasePrice(stockName);
+                            if (avgPurchase > 0) {
+                                System.out.println("Updating average purchase for " + stockName + ": $" + avgPurchase);
+                                label.setText("Avg: $" + String.format("%.2f", avgPurchase));
+                            } else {
+                                label.setText("");
+                            }
+                        }
+                    }
+                }
+            } 
+            // Check if this is a "Sell" button
+            else if (comp instanceof JButton) {
+                JButton button = (JButton) comp;
+                if ("Sell".equals(button.getText())) {
+                    System.out.println("Found Sell button for " + stockName + ", setting enabled: " + (quantity > 0));
+                    button.setEnabled(quantity > 0);
+                }
+            }
+            
+            // Recursively search child containers
+            if (comp instanceof Container) {
+                findAndUpdateComponents((Container) comp, stockName, quantity);
             }
         }
     }
