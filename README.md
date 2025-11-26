@@ -1,37 +1,37 @@
-# 💹 Trading Simulation Platform
+# Trading Simulation Platform
 
 A modern, full-screen Java application that simulates stock trading with a sleek graphical user interface (GUI) using Swing. Track stock prices with realistic market simulation, invest with virtual money, and visualize price movements with dynamic charts.
 
 ---
 
-## 🧠 Features
+## Features
 
-- 🏠 **Modern UI**:
+- **Modern UI**:
   - Full-screen immersive interface without window decorations
   - Dark mode design with consistent styling
   - Responsive layout that adapts to your screen size
   
-- 📊 **Realistic Stock Simulation**:
+- **Realistic Stock Simulation**:
   - Dynamic stock prices that follow trend patterns
   - Market volatility simulation with randomized price changes
   - Occasional price jumps mimicking real market events
   - Different volatility and trends for each stock
 
-- 💼 **Trading Dashboard**:
+- **Trading Dashboard**:
   - Live price updates for all available stocks
   - Clear buy/sell buttons for each stock
   - Balance tracking that updates instantly
   - Transaction history console showing all your trades
   - Colored transaction logs (green for buys, red for sells)
 
-- 📈 **Interactive Stock Chart**:
+- **Interactive Stock Chart**:
   - Real-time line graph showing multiple stock prices
   - Color-coded stock lines for easy identification
   - Custom-styled checkboxes to toggle which stocks to display
   - Tooltips showing exact values when hovering
   - Dark theme matching the overall application style
 
-- 🔄 **Advanced Stock Algorithm**:
+- **Advanced Stock Algorithm**:
   - Stock-specific trend directions and strength
   - Varying volatility levels for different stocks
   - Market event simulation with price jumps
@@ -39,7 +39,7 @@ A modern, full-screen Java application that simulates stock trading with a sleek
 
 ---
 
-## 📦 Technologies Used
+## Technologies Used
 
 - Java (JDK 8+)
 - Swing (for GUI)
@@ -48,7 +48,7 @@ A modern, full-screen Java application that simulates stock trading with a sleek
 
 ---
 
-## 🔧 How to Run
+## How to Run
 
 1. **Clone the repository:**
 
@@ -70,7 +70,7 @@ A modern, full-screen Java application that simulates stock trading with a sleek
 
 ---
 
-## 💡 How to Use
+## How to Use
 
 1. **Welcome Screen:**
    - Click "START TRADING" to begin trading
@@ -94,7 +94,7 @@ A modern, full-screen Java application that simulates stock trading with a sleek
 
 ---
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 - Save/load functionality to preserve your portfolio
 - More advanced trading options (limit orders, stop losses)
@@ -104,12 +104,12 @@ A modern, full-screen Java application that simulates stock trading with a sleek
 
 ---
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Feel free to submit a Pull Request.
